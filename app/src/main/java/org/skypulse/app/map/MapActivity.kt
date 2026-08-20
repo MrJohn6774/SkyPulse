@@ -1,6 +1,10 @@
 package org.skypulse.app.map
 
 import android.graphics.Color
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -18,6 +22,7 @@ import org.json.JSONObject
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.Style
@@ -41,6 +46,7 @@ class MapActivity : AppCompatActivity() {
     private lateinit var mapView: MapView
     private var map: MapLibreMap? = null
     private var selectedIcao: String? = null
+    private var initialViewportSet = false
 
     private val refresh = object : Runnable {
         override fun run() {
@@ -130,27 +136,25 @@ class MapActivity : AppCompatActivity() {
             PropertyFactory.visibility(if (settings.traconEnabled) Property.VISIBLE else Property.NONE),
         ))
 
+        style.addImage(RECEIVER_ICON, receiverIconBitmap())
+        style.addImage(AIRCRAFT_ICON, aircraftIconBitmap())
+
         style.addSource(GeoJsonSource(RECEIVER_SOURCE, receiverGeoJson()))
         style.addLayer(SymbolLayer(RECEIVER_LAYER, RECEIVER_SOURCE).withProperties(
-            PropertyFactory.textField("◆"),
-            PropertyFactory.textSize(22f),
-            PropertyFactory.textColor("#65D6AD"),
-            PropertyFactory.textHaloColor("#172033"),
-            PropertyFactory.textHaloWidth(2f),
+            PropertyFactory.iconImage(RECEIVER_ICON),
+            PropertyFactory.iconAllowOverlap(true),
         ))
 
         style.addSource(GeoJsonSource(AIRCRAFT_SOURCE, emptyFeatureCollection()))
         style.addLayer(SymbolLayer(AIRCRAFT_LAYER, AIRCRAFT_SOURCE).withProperties(
-            PropertyFactory.textField("▲"),
-            PropertyFactory.textSize(18f),
-            PropertyFactory.textColor("#FFFFFF"),
-            PropertyFactory.textHaloColor("#172033"),
-            PropertyFactory.textHaloWidth(2f),
-            PropertyFactory.textRotate(Expression.get("track")),
-            PropertyFactory.textAllowOverlap(true),
+            PropertyFactory.iconImage(AIRCRAFT_ICON),
+            PropertyFactory.iconRotate(Expression.get("track")),
+            PropertyFactory.iconAllowOverlap(true),
+            PropertyFactory.iconIgnorePlacement(true),
         ))
         style.addLayer(SymbolLayer(AIRCRAFT_LABEL_LAYER, AIRCRAFT_SOURCE).withProperties(
             PropertyFactory.textField(Expression.get("label")),
+            PropertyFactory.textFont(arrayOf(DEFAULT_MAP_FONT)),
             PropertyFactory.textSize(11f),
             PropertyFactory.textColor("#FFFFFF"),
             PropertyFactory.textHaloColor("#172033"),
@@ -165,6 +169,7 @@ class MapActivity : AppCompatActivity() {
         val style = map?.style ?: return
         val active = AircraftRepository.active()
         style.getSourceAs<GeoJsonSource>(AIRCRAFT_SOURCE)?.setGeoJson(aircraftGeoJson(active))
+        if (!initialViewportSet) frameAircraft(active)
         selectedIcao?.let { icao ->
             active.firstOrNull { it.icao == icao && it.latitude != null && it.longitude != null }?.let {
                 map?.animateCamera(CameraUpdateFactory.newLatLng(LatLng(it.latitude!!, it.longitude!!)))
@@ -201,9 +206,32 @@ class MapActivity : AppCompatActivity() {
 
     private fun recenter() {
         selectedIcao = null
-        settings.receiverPoint()?.let {
-            map?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(it.latitude, it.longitude), 8.0))
+        val receiver = settings.receiverPoint()
+        if (receiver != null) {
+            initialViewportSet = true
+            map?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(receiver.latitude, receiver.longitude), 8.0))
+        } else {
+            frameAircraft(AircraftRepository.active())
         }
+    }
+
+    private fun frameAircraft(values: List<AircraftSnapshot>): Boolean {
+        val points = values.mapNotNull { value ->
+            val latitude = value.latitude ?: return@mapNotNull null
+            val longitude = value.longitude ?: return@mapNotNull null
+            LatLng(latitude, longitude)
+        }
+        if (points.isEmpty()) return false
+
+        val cameraUpdate = if (points.size == 1) {
+            CameraUpdateFactory.newLatLngZoom(points.first(), 8.0)
+        } else {
+            val bounds = LatLngBounds.Builder().includes(points).build()
+            CameraUpdateFactory.newLatLngBounds(bounds, dp(64))
+        }
+        initialViewportSet = true
+        map?.animateCamera(cameraUpdate)
+        return true
     }
 
     private fun setLayerVisible(id: String, visible: Boolean) {
@@ -240,6 +268,62 @@ class MapActivity : AppCompatActivity() {
 
     private fun emptyFeatureCollection() = "{\"type\":\"FeatureCollection\",\"features\":[]}"
 
+    private fun aircraftIconBitmap(): Bitmap {
+        val size = dp(30)
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val path = Path().apply {
+            moveTo(size * 0.50f, size * 0.04f)
+            lineTo(size * 0.63f, size * 0.42f)
+            lineTo(size * 0.92f, size * 0.68f)
+            lineTo(size * 0.60f, size * 0.61f)
+            lineTo(size * 0.55f, size * 0.87f)
+            lineTo(size * 0.70f, size * 0.96f)
+            lineTo(size * 0.50f, size * 0.91f)
+            lineTo(size * 0.30f, size * 0.96f)
+            lineTo(size * 0.45f, size * 0.87f)
+            lineTo(size * 0.40f, size * 0.61f)
+            lineTo(size * 0.08f, size * 0.68f)
+            lineTo(size * 0.37f, size * 0.42f)
+            close()
+        }
+        canvas.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(23, 32, 51)
+            style = Paint.Style.STROKE
+            strokeWidth = dp(4).toFloat()
+            strokeJoin = Paint.Join.ROUND
+        })
+        canvas.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            style = Paint.Style.FILL
+        })
+        return bitmap
+    }
+
+    private fun receiverIconBitmap(): Bitmap {
+        val size = dp(24)
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val path = Path().apply {
+            moveTo(size * 0.50f, size * 0.08f)
+            lineTo(size * 0.92f, size * 0.50f)
+            lineTo(size * 0.50f, size * 0.92f)
+            lineTo(size * 0.08f, size * 0.50f)
+            close()
+        }
+        canvas.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(23, 32, 51)
+            style = Paint.Style.STROKE
+            strokeWidth = dp(4).toFloat()
+            strokeJoin = Paint.Join.ROUND
+        })
+        canvas.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(101, 214, 173)
+            style = Paint.Style.FILL
+        })
+        return bitmap
+    }
+
     override fun onStart() { super.onStart(); mapView.onStart(); handler.post(refresh) }
     override fun onResume() { super.onResume(); mapView.onResume() }
     override fun onPause() { mapView.onPause(); super.onPause() }
@@ -255,8 +339,11 @@ class MapActivity : AppCompatActivity() {
         private const val TRACON_LAYER = "tracon-layer"
         private const val RECEIVER_SOURCE = "receiver-source"
         private const val RECEIVER_LAYER = "receiver-layer"
+        private const val RECEIVER_ICON = "receiver-icon"
         private const val AIRCRAFT_SOURCE = "aircraft-source"
         private const val AIRCRAFT_LAYER = "aircraft-layer"
+        private const val AIRCRAFT_ICON = "aircraft-icon"
         private const val AIRCRAFT_LABEL_LAYER = "aircraft-label-layer"
+        private const val DEFAULT_MAP_FONT = "Noto Sans Regular"
     }
 }

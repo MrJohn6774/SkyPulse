@@ -25,7 +25,7 @@ class BoundaryRepository(
     fun sourceUri(name: String): URI {
         val cached = File(directory, name)
         return if (cached.isFile && runCatching { validateCollection(cached.readText()) }.isSuccess) {
-            cached.toURI()
+            localFileUri(cached.absolutePath)
         } else {
             URI("asset://$name")
         }
@@ -180,5 +180,10 @@ class BoundaryRepository(
         private const val MAX_FEATURES = 5_000
         private val ALLOWED_GEOMETRIES = setOf("Polygon", "MultiPolygon", "LineString", "MultiLineString")
         private val updating = AtomicBoolean(false)
+
+        internal fun localFileUri(absolutePath: String): URI {
+            require(absolutePath.startsWith('/')) { "Boundary path must be absolute" }
+            return URI("file", "", absolutePath, null)
+        }
     }
 }
