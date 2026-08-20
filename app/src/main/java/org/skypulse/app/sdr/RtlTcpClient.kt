@@ -5,6 +5,7 @@ import org.skypulse.app.health.HealthState
 import java.io.EOFException
 import java.io.InputStream
 import java.net.InetAddress
+import java.net.Inet4Address
 import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.SocketTimeoutException
@@ -24,7 +25,7 @@ class RtlTcpClient(
             client.tcpNoDelay = true
             client.receiveBufferSize = BUFFER_SIZE * 2
             client.soTimeout = READ_TIMEOUT_MS
-            client.connect(InetSocketAddress(InetAddress.getLoopbackAddress(), port), CONNECT_TIMEOUT_MS)
+            client.connect(InetSocketAddress(LOOPBACK_ADDRESS, port), CONNECT_TIMEOUT_MS)
             val input = client.getInputStream()
             consumeHeader(input)
             HealthState.rtlTcpConnected.set(true)
@@ -84,6 +85,13 @@ class RtlTcpClient(
     }
 
     companion object {
+        // The Android rtl_tcp driver is explicitly started with "-a 127.0.0.1". Do not use
+        // InetAddress.getLoopbackAddress() here: on some devices it resolves to IPv6 ::1,
+        // which cannot connect to the driver's IPv4-only listener.
+        internal val LOOPBACK_ADDRESS: InetAddress = InetAddress.getByAddress(
+            byteArrayOf(127, 0, 0, 1),
+        ).also { check(it is Inet4Address) }
+
         private const val BUFFER_SIZE = 256 * 1024
         private const val RTL_TCP_HEADER_SIZE = 12
         private const val CONNECT_TIMEOUT_MS = 1_500
