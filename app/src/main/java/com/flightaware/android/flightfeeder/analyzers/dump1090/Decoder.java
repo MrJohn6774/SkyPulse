@@ -10,6 +10,7 @@
  *   - Replaced LoggerEbc with AnalyzerBridge.getLogger()
  *   - Removed unused GlobalServiceStatus import
  *   - Extended MAX_RANGE from 200 nm to 300 nm
+ *   - Allow global airborne CPR decoding without a configured receiver location (SkyPulse, 2026)
  *
  * Source of modified GPLv2 components:
  * https://github.com/ebc81/dump1090andro-gpl-sources
@@ -399,19 +400,7 @@ public class Decoder {
 
 		GeoPoint pos = AnalyzerBridge.getLocation();
 
-		if (pos == null )
-		{
-			return false;
-		}
-
-
-		float[] results = new float[1];
-
-		Location.distanceBetween(pos.getLatitude(), pos.getLongitude(), lat, lon, results);
-
-		// make sure the position is within the reasonable range
-		// filters out bad transponder data
-		if (results[0] > MAX_RANGE)
+		if (!isGlobalPositionUsable(aircraft.isOnGround(), pos, lat, lon))
 			return false;
 
 		aircraft.setLatitude(lat);
@@ -427,6 +416,23 @@ public class Decoder {
 		aircraft.setOddPosition(null);
 
 		return true;
+	}
+
+	/*
+	 * Airborne global CPR is self-contained once a matching even/odd pair has
+	 * been received. A station location is useful for range filtering, but it
+	 * must not suppress an otherwise valid global position. Surface CPR remains
+	 * ambiguous without a receiver/previous position and still requires one.
+	 */
+	static boolean isGlobalPositionUsable(boolean onGround, GeoPoint receiver,
+			double latitude, double longitude) {
+		if (receiver == null)
+			return !onGround;
+
+		float[] results = new float[1];
+		Location.distanceBetween(receiver.getLatitude(), receiver.getLongitude(),
+				latitude, longitude, results);
+		return results[0] <= MAX_RANGE;
 	}
 
 	private static boolean decodeCprRelative(Aircraft aircraft, boolean useOdd) {
