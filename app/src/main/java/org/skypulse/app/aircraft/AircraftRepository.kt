@@ -20,7 +20,7 @@ object AircraftRepository {
             headingDegrees = source.heading,
             trackDegrees = source.trackAngle ?: source.heading,
             verticalRateFeetPerMinute = source.verticalRate,
-            squawk = source.squawk,
+            squawk = SquawkCode.fromPackedOctal(source.squawk),
             emergencyState = source.status,
             signalDb = source.averageSignalStrength,
             messageCount = source.messageCount,

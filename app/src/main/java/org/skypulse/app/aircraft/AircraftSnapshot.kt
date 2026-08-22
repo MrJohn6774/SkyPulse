@@ -10,7 +10,7 @@ data class AircraftSnapshot(
     val headingDegrees: Int?,
     val trackDegrees: Int?,
     val verticalRateFeetPerMinute: Int?,
-    val squawk: Int?,
+    val squawk: String?,
     val emergencyState: Int?,
     val signalDb: Double,
     val messageCount: Int,
