@@ -48,7 +48,7 @@ class AdsbForegroundService : Service() {
                     decoder?.stopEbc()
                     decoder?.startEbc()
                 }
-                HealthState.aircraftActive.set(AircraftRepository.active().size)
+                HealthState.aircraftActive.set(AircraftRepository.mappable().size)
                 updateNotification()
                 mainHandler.postDelayed(this, MONITOR_INTERVAL_MS)
             }

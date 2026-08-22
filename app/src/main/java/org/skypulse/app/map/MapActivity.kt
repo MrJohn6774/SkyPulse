@@ -167,7 +167,7 @@ class MapActivity : AppCompatActivity() {
 
     private fun refreshAircraft() {
         val style = map?.style ?: return
-        val active = AircraftRepository.active()
+        val active = AircraftRepository.mappable()
         style.getSourceAs<GeoJsonSource>(AIRCRAFT_SOURCE)?.setGeoJson(aircraftGeoJson(active))
         if (!initialViewportSet) frameAircraft(active)
         selectedIcao?.let { icao ->
@@ -211,7 +211,7 @@ class MapActivity : AppCompatActivity() {
             initialViewportSet = true
             map?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(receiver.latitude, receiver.longitude), 8.0))
         } else {
-            frameAircraft(AircraftRepository.active())
+            frameAircraft(AircraftRepository.mappable())
         }
     }
 
@@ -252,7 +252,7 @@ class MapActivity : AppCompatActivity() {
 
     private fun aircraftGeoJson(values: List<AircraftSnapshot>): String {
         val features = JSONArray()
-        values.filter { it.latitude != null && it.longitude != null }.forEach { value ->
+        values.filter { it.hasValidPosition }.forEach { value ->
             features.put(JSONObject().apply {
                 put("type", "Feature")
                 put("properties", JSONObject().apply {

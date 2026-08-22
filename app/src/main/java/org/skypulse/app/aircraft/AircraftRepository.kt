@@ -34,6 +34,10 @@ object AircraftRepository {
         return aircraft.values.sortedBy { it.icao }
     }
 
+    /** Active aircraft which can be represented by a marker on the map. */
+    fun mappable(nowMs: Long = System.currentTimeMillis()): List<AircraftSnapshot> =
+        active(nowMs).filter { it.hasValidPosition }
+
     fun clear() = aircraft.clear()
 
     private fun expire(nowMs: Long, force: Boolean) {

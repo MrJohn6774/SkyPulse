@@ -40,7 +40,7 @@ class DecoderBridge(
 
     override fun onAircraftUpdated(message: ModeSMessage, aircraft: Aircraft) {
         AircraftRepository.update(aircraft)
-        HealthState.aircraftActive.set(AircraftRepository.active().size)
+        HealthState.aircraftActive.set(AircraftRepository.mappable().size)
     }
 
     override fun onReadyAircraftUpdated(message: ModeSMessage, aircraft: Aircraft, uptimeMs: Long) = Unit
