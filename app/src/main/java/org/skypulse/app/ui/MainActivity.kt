@@ -80,11 +80,14 @@ class MainActivity : AppCompatActivity() {
         })
         content.addMatchWidth(MaterialButton(this).apply {
             text = "Restart receiver"
-            setOnClickListener { AdsbForegroundService.start(this@MainActivity, AdsbForegroundService.ACTION_RESTART) }
+            setOnClickListener {
+                settings.receiverEnabled = true
+                AdsbForegroundService.start(this@MainActivity, AdsbForegroundService.ACTION_RESTART)
+            }
         })
         content.addMatchWidth(MaterialButton(this).apply {
             text = "Stop"
-            setOnClickListener { stopService(Intent(this@MainActivity, AdsbForegroundService::class.java)) }
+            setOnClickListener { AdsbForegroundService.stop(this@MainActivity) }
         })
 
         content.addMatchWidth(section("Station"))
@@ -104,11 +107,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startReceiverAndDriver() {
-        AdsbForegroundService.start(this)
+        settings.receiverEnabled = true
         val driverIntent = RtlTcpDriver.createIntent(this, settings)
         if (driverIntent == null) {
+            AdsbForegroundService.start(this)
             Toast.makeText(this, "Install an iqsrc-compatible rtl_tcp_andro driver", Toast.LENGTH_LONG).show()
+        } else if (!RtlTcpDriver.reserveForegroundLaunch()) {
+            AdsbForegroundService.start(this)
+            Toast.makeText(this, "SDR driver startup is already in progress", Toast.LENGTH_SHORT).show()
         } else {
+            // Reserve the single-flight launch before the service supervisor starts. Otherwise
+            // its first refused TCP connection can race this foreground activity launch.
+            AdsbForegroundService.start(this)
             driverLauncher.launch(driverIntent)
         }
     }

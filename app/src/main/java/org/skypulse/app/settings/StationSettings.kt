@@ -54,6 +54,10 @@ class StationSettings(context: Context) {
         get() = prefs.getBoolean(KEY_START_BOOT, true)
         set(value) = prefs.edit().putBoolean(KEY_START_BOOT, value).apply()
 
+    var receiverEnabled: Boolean
+        get() = prefs.getBoolean(KEY_RECEIVER_ENABLED, true)
+        set(value) = prefs.edit().putBoolean(KEY_RECEIVER_ENABLED, value).apply()
+
     var firEnabled: Boolean
         get() = prefs.getBoolean(KEY_FIR, false)
         set(value) = prefs.edit().putBoolean(KEY_FIR, value).apply()
@@ -109,6 +113,7 @@ class StationSettings(context: Context) {
         private const val KEY_GAIN = "gain_tenths_db"
         private const val KEY_BEAST_PORT = "beast_port"
         private const val KEY_START_BOOT = "start_at_boot"
+        private const val KEY_RECEIVER_ENABLED = "receiver_enabled"
         private const val KEY_FIR = "fir_enabled"
         private const val KEY_TRACON = "tracon_enabled"
         private const val KEY_LABELS = "labels_enabled"

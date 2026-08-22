@@ -6,12 +6,17 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.SystemClock
 import org.skypulse.app.diagnostics.DiagnosticLog
 import org.skypulse.app.settings.StationSettings
+import java.util.concurrent.atomic.AtomicBoolean
 
 object RtlTcpDriver {
     private const val TAG = "ADSB.Driver"
     private const val PREFERRED_PACKAGE = "marto.rtl_tcp_andro"
+    private const val DRIVER_START_SINGLE_FLIGHT_MS = 45_000L
+    private val launchFence = DriverLaunchFence(DRIVER_START_SINGLE_FLIGHT_MS)
+    private val teardownPending = AtomicBoolean(false)
 
     fun createIntent(context: Context, settings: StationSettings): Intent? {
         val base = Intent(Intent.ACTION_VIEW).apply {
@@ -36,7 +41,12 @@ object RtlTcpDriver {
     }
 
     fun requestStartFromBackground(context: Context, settings: StationSettings): Boolean {
+        if (!reserveLaunch()) {
+            DiagnosticLog.info(TAG, "Driver launch suppressed; a start is already in flight")
+            return false
+        }
         val intent = createIntent(context, settings) ?: run {
+            launchFence.releaseAfterConfirmedTeardown()
             DiagnosticLog.warn(TAG, "No iqsrc-compatible SDR driver is installed")
             return false
         }
@@ -46,8 +56,23 @@ object RtlTcpDriver {
             DiagnosticLog.info(TAG, "Requested driver start: ${settings.driverArguments()}")
             true
         } catch (error: Exception) {
+            launchFence.releaseAfterConfirmedTeardown()
             DiagnosticLog.warn(TAG, "Android blocked background driver activity start", error)
             false
         }
     }
+
+    fun reserveForegroundLaunch(): Boolean = reserveLaunch()
+
+    internal fun markTeardownPending() {
+        teardownPending.set(true)
+    }
+
+    internal fun confirmTeardownIfPending(): Boolean {
+        if (!teardownPending.compareAndSet(true, false)) return false
+        launchFence.releaseAfterConfirmedTeardown()
+        return true
+    }
+
+    private fun reserveLaunch(): Boolean = launchFence.tryAcquire(SystemClock.elapsedRealtime())
 }

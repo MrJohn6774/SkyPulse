@@ -67,10 +67,14 @@ class AdsbForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
+                settings.receiverEnabled = false
                 stopSelf()
                 return START_NOT_STICKY
             }
             ACTION_RESTART -> restartCore()
+            ACTION_USB_CHANGED -> rtlController?.onUsbChanged(
+                intent.getStringExtra(EXTRA_USB_EVENT).orEmpty(),
+            )
         }
         return START_STICKY
     }
@@ -190,6 +194,8 @@ class AdsbForegroundService : Service() {
     companion object {
         const val ACTION_STOP = "org.skypulse.app.action.STOP"
         const val ACTION_RESTART = "org.skypulse.app.action.RESTART"
+        const val ACTION_USB_CHANGED = "org.skypulse.app.action.USB_CHANGED"
+        const val EXTRA_USB_EVENT = "usb_event"
         private const val TAG_SERVICE = "ADSB.Service"
         private const val CHANNEL_ID = "adsb_receiver"
         private const val NOTIFICATION_ID = 1090
@@ -198,6 +204,18 @@ class AdsbForegroundService : Service() {
 
         fun start(context: Context, action: String? = null) {
             val intent = Intent(context, AdsbForegroundService::class.java).apply { this.action = action }
+            ContextCompat.startForegroundService(context, intent)
+        }
+
+        fun stop(context: Context) {
+            val intent = Intent(context, AdsbForegroundService::class.java).setAction(ACTION_STOP)
+            ContextCompat.startForegroundService(context, intent)
+        }
+
+        fun notifyUsbChanged(context: Context, event: String) {
+            val intent = Intent(context, AdsbForegroundService::class.java)
+                .setAction(ACTION_USB_CHANGED)
+                .putExtra(EXTRA_USB_EVENT, event)
             ContextCompat.startForegroundService(context, intent)
         }
     }

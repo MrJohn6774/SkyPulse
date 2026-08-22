@@ -1,6 +1,7 @@
 package org.skypulse.app.sdr
 
 import com.flightaware.android.flightfeeder.analyzers.dump1090.RtlSdrDataQueue
+import org.skypulse.app.diagnostics.DiagnosticLog
 import org.skypulse.app.health.HealthState
 import java.io.EOFException
 import java.io.InputStream
@@ -17,7 +18,12 @@ class RtlTcpClient(
     private val onStreaming: () -> Unit,
 ) {
     private val running = AtomicBoolean(true)
+    private val cleanExitRequested = AtomicBoolean(false)
     @Volatile private var socket: Socket? = null
+    @Volatile var wasConnected: Boolean = false
+        private set
+    @Volatile var hasReceivedIq: Boolean = false
+        private set
 
     fun stream() {
         Socket().use { client ->
@@ -26,12 +32,30 @@ class RtlTcpClient(
             client.receiveBufferSize = BUFFER_SIZE * 2
             client.soTimeout = READ_TIMEOUT_MS
             client.connect(InetSocketAddress(LOOPBACK_ADDRESS, port), CONNECT_TIMEOUT_MS)
+            wasConnected = true
             val input = client.getInputStream()
             consumeHeader(input)
-            HealthState.rtlTcpConnected.set(true)
-            onStreaming()
             readIq(input)
         }
+    }
+
+    private fun requestDriverExit(): Boolean {
+        val client = socket ?: return false
+        if (!wasConnected || client.isClosed) return false
+        return try {
+            RtlTcpControl.requestDriverExit(client.getOutputStream())
+            DiagnosticLog.info("ADSB.RtlTcp", "Requested remote driver exit")
+            true
+        } catch (error: Exception) {
+            DiagnosticLog.warn("ADSB.RtlTcp", "Could not send remote driver exit", error)
+            false
+        }
+    }
+
+    /** Lets the stream thread send the network command without violating main-thread policy. */
+    fun requestCleanStop() {
+        cleanExitRequested.set(true)
+        running.set(false)
     }
 
     fun stop() {
@@ -56,25 +80,35 @@ class RtlTcpClient(
         val buffer = ByteArray(BUFFER_SIZE)
         var pending: Byte? = null
         var lastReadAt = android.os.SystemClock.elapsedRealtime()
-        while (running.get()) {
-            try {
-                val offset = if (pending == null) 0 else {
-                    buffer[0] = pending
-                    pending = null
-                    1
-                }
-                val count = input.read(buffer, offset, buffer.size - offset)
-                if (count < 0) throw EOFException("RTL-TCP stream closed")
-                if (count == 0) continue
-                lastReadAt = android.os.SystemClock.elapsedRealtime()
-                val total = offset + count
-                pending = offerEvenIq(buffer, total, pending)
-                HealthState.onIqBytes(count)
-            } catch (timeout: SocketTimeoutException) {
-                if (android.os.SystemClock.elapsedRealtime() - lastReadAt >= staleThresholdMs) {
-                    throw SocketTimeoutException("No RTL-TCP I/Q bytes for $staleThresholdMs ms")
+        try {
+            while (running.get()) {
+                try {
+                    val offset = if (pending == null) 0 else {
+                        buffer[0] = pending
+                        pending = null
+                        1
+                    }
+                    val count = input.read(buffer, offset, buffer.size - offset)
+                    if (count < 0) throw EOFException("RTL-TCP stream closed")
+                    if (count == 0) continue
+                    lastReadAt = android.os.SystemClock.elapsedRealtime()
+                    if (!hasReceivedIq) {
+                        hasReceivedIq = true
+                        HealthState.rtlTcpConnected.set(true)
+                        onStreaming()
+                    }
+                    val total = offset + count
+                    pending = offerEvenIq(buffer, total, pending)
+                    HealthState.onIqBytes(count)
+                } catch (timeout: SocketTimeoutException) {
+                    if (android.os.SystemClock.elapsedRealtime() - lastReadAt >= staleThresholdMs) {
+                        requestDriverExit()
+                        throw SocketTimeoutException("No RTL-TCP I/Q bytes for $staleThresholdMs ms")
+                    }
                 }
             }
+        } finally {
+            if (cleanExitRequested.get()) requestDriverExit()
         }
     }
 
