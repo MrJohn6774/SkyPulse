@@ -5,6 +5,7 @@ import org.skypulse.app.diagnostics.DiagnosticLog
 import org.skypulse.app.health.HealthState
 import java.io.BufferedOutputStream
 import java.net.InetAddress
+import java.net.Inet4Address
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
@@ -45,7 +46,7 @@ class BeastTcpServer(private val port: Int) {
         try {
             ServerSocket().use { listener ->
                 listener.reuseAddress = true
-                listener.bind(InetSocketAddress(InetAddress.getLoopbackAddress(), port), 2)
+                listener.bind(InetSocketAddress(LOOPBACK_ADDRESS, port), 2)
                 serverSocket = listener
                 DiagnosticLog.info(TAG, "Listening on 127.0.0.1:$port")
                 while (running.get()) {
@@ -109,6 +110,9 @@ class BeastTcpServer(private val port: Int) {
     }
 
     companion object {
+        internal val LOOPBACK_ADDRESS: InetAddress = InetAddress.getByAddress(
+            byteArrayOf(127, 0, 0, 1),
+        ).also { check(it is Inet4Address) }
         private const val TAG = "ADSB.Beast"
     }
 }
