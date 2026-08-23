@@ -1,0 +1,1 @@
+First public SkyPulse release: on-device ADS-B decoding, aircraft map, optional local Beast output, offline boundaries, and configurable unattended operation.

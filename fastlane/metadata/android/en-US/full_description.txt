@@ -1,0 +1,7 @@
+SkyPulse is an Android receiver for monitoring 1090 MHz Mode S and ADS-B traffic with an RTL-SDR.
+
+It decodes aircraft data on-device using the separate FLOSS marto.rtl_tcp_andro driver, displays aircraft on a map, and includes offline FIR and TRACON boundary data. The map uses OpenFreeMap when opened, and boundary updates are optional.
+
+For unattended stations, boot startup is user-configurable. Beast TCP output is optional, disabled by default, and limited to localhost for local tools such as readsb.
+
+SkyPulse has no analytics, advertising, or account requirement, and does not depend on Google Play Services.
