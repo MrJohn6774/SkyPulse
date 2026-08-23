@@ -1,51 +1,44 @@
 # SkyPulse
 
-SkyPulse is a GPL-3.0-or-later Android ADS-B station MVP for a dedicated, unattended 1090 MHz receiver.
-It consumes unsigned 8-bit I/Q from an external `rtl_tcp_andro` driver, decodes Mode S/ADS-B
-on-device, and publishes standard Beast binary data on `127.0.0.1:30005` for Termux/readsb.
+SkyPulse decodes 1090 MHz Mode S/ADS-B aircraft traffic on Android using an RTL-SDR.
 
-## Implemented MVP
+## Features
 
-- ebcTech/FlightAware dump1090 detector and decoder with the last GMS type removed
-- external `iqsrc://` SDR launch at 1090 MHz / 2.4 MSPS
-- explicit supervised RTL-TCP state machine and five-second stale-stream recovery
-- bounded I/Q, decoder, Beast, and UI paths
-- standard Beast type 2/3 framing, 48-bit timestamp, RSSI, and `0x1a` escaping
-- replaceable one-client loopback Beast server that disconnects slow readers
-- `connectedDevice` foreground service, partial wake lock, sticky restart, boot/USB receivers
-- `http://127.0.0.1:8090/status` health JSON
-- receiver, settings, diagnostics, and MapLibre/OpenFreeMap aircraft-map screens
-- offline VATSpy FIR and SimAware TRACON snapshots with layer toggles
-- weekly private-cache boundary updates with validation and atomic replacement
+- On-device ADS-B decoding and live aircraft map
+- Offline FIR and TRACON boundary snapshots
+- Optional loopback-only Beast TCP output
+- Configurable unattended startup after boot
 
-## Build
+## Requirements
 
-The project uses API 36, AGP 9.3, Gradle 9.5, JDK 17+, and minSdk 23.
+SkyPulse needs an RTL-SDR through USB OTG and the separate `marto.rtl_tcp_andro` driver, available from F-Droid.
 
-```powershell
-$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr"
-./gradlew.bat testDebugUnitTest assembleDebug
-```
+## Quick start
 
-The debug APK is produced at `app/build/outputs/apk/debug/app-debug.apk`.
+1. Enter the receiver latitude and longitude in Settings.
+2. Connect the RTL-SDR and tap **Start**.
+3. Check receiver status and the aircraft map.
 
-## Initial station setup
+## Map and boundary data
 
-1. Side-load SkyPulse and a current Signalware-compatible `rtl_tcp_andro` APK.
-2. Open Settings and enter the fixed receiver latitude/longitude.
-3. Connect the RTL-SDR through powered USB OTG.
-4. Tap **Start** and grant the external driver's USB permission when Android asks.
-5. Confirm I/Q and messages on Receiver, then connect Termux to `127.0.0.1:30005`.
-6. Check health with `curl http://127.0.0.1:8090/status` from Termux.
+The map uses OpenFreeMap when opened. FIR and TRACON data is bundled for offline use. Automatic boundary updates are off by default; enable them or request a manual update in Settings.
 
-## Reliability boundary
+## Beast TCP export
 
-The software implements automatic socket, stale-I/Q, decoder-thread, driver, USB attach,
-client, process, and boot recovery. A real RTL-SDR/phone test is still required before
-claiming the mandatory unattended full-reboot, eight-hour screen-off, or 72-hour soak
-acceptance cases. Some ROMs may block the external driver's activity at boot; see
-`IMPLEMENTATION_PLAN.md` for the required embedded/fork fallback decision.
+The Beast frame pipeline is part of normal decoding. Beast TCP export is disabled by default. Enable it in **Settings → Data export → Beast TCP export** for local clients such as Termux/readsb. It listens only on `127.0.0.1`, using port `30005` by default.
 
-## Boundary regeneration
+## Unattended operation
 
-See `tools/README.md`.
+Use **Settings → Start at boot** to allow boot startup. It is user-configurable; Android and ROM background restrictions can affect automatic startup.
+
+## Privacy and network access
+
+See [PRIVACY.md](PRIVACY.md). SkyPulse has no analytics, ads, accounts, or Google Play Services.
+
+## License and attribution
+
+SkyPulse is GPL-3.0-or-later. Decoder, map, and boundary-data attribution is in [NOTICE.md](NOTICE.md).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
