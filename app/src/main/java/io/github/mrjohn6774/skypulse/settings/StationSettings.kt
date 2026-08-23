@@ -79,7 +79,7 @@ class StationSettings(context: Context) {
         set(value) = prefs.edit().putString(KEY_STYLE, value.trim()).apply()
 
     var boundaryAutoUpdate: Boolean
-        get() = prefs.getBoolean(KEY_BOUNDARY_UPDATE, true)
+        get() = prefs.getBoolean(KEY_BOUNDARY_UPDATE, false)
         set(value) = prefs.edit().putBoolean(KEY_BOUNDARY_UPDATE, value).apply()
 
     var lastBoundaryCheckMs: Long

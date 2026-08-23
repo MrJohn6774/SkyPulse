@@ -10,6 +10,7 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.textfield.TextInputLayout
 import io.github.mrjohn6774.skypulse.service.AdsbForegroundService
+import io.github.mrjohn6774.skypulse.map.BoundaryRepository
 import io.github.mrjohn6774.skypulse.settings.StationSettings
 
 class SettingsActivity : AppCompatActivity() {
@@ -70,6 +71,13 @@ class SettingsActivity : AppCompatActivity() {
         tracon = content.switch("TRACON overlay", settings.traconEnabled)
         labels = content.switch("Aircraft labels", settings.labelsEnabled)
         boundaryUpdate = content.switch("Weekly boundary update", settings.boundaryAutoUpdate)
+        content.addMatchWidth(MaterialButton(this).apply {
+            text = "Update boundary data now"
+            setOnClickListener {
+                BoundaryRepository(this@SettingsActivity, settings).updateNow()
+                Toast.makeText(this@SettingsActivity, "Boundary update started", Toast.LENGTH_SHORT).show()
+            }
+        })
 
         content.addMatchWidth(MaterialButton(this).apply {
             text = "Save and restart receiver"

@@ -49,6 +49,13 @@ class BoundaryRepository(
         }, "BoundaryUpdate").start()
     }
 
+    fun updateNow() {
+        if (!updating.compareAndSet(false, true)) return
+        Thread({
+            try { updateFir(); updateTracon() } finally { updating.set(false) }
+        }, "BoundaryManualUpdate").start()
+    }
+
     private fun updateFir() {
         runCatching {
             val text = downloadText(FIR_URL, MAX_GEOJSON_BYTES)
