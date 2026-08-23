@@ -72,6 +72,8 @@ class HealthHttpServer(private val port: Int = 8090) {
         append("\"iq_bytes_per_sec\":").append(value.iqBytesPerSec).append(',')
         append("\"messages_per_sec\":").append(String.format(Locale.US, "%.1f", value.messagesPerSec)).append(',')
         append("\"aircraft_active\":").append(value.aircraftActive).append(',')
+        append("\"beast_pipeline\":\"").append(value.beastPipeline).append("\",")
+        append("\"beast_tcp_export_enabled\":").append(value.beastTcpExportEnabled).append(',')
         append("\"beast_clients\":").append(value.beastClients).append(',')
         append("\"last_iq_ms_ago\":").append(value.lastIqMsAgo ?: "null").append(',')
         append("\"last_message_ms_ago\":").append(value.lastMessageMsAgo ?: "null").append(',')

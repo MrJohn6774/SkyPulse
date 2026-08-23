@@ -22,6 +22,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var frequency: EditText
     private lateinit var gain: EditText
     private lateinit var beastPort: EditText
+    private lateinit var beastExport: MaterialSwitch
     private lateinit var styleUrl: EditText
     private lateinit var autoGain: MaterialSwitch
     private lateinit var startBoot: MaterialSwitch
@@ -50,8 +51,18 @@ class SettingsActivity : AppCompatActivity() {
         frequency = content.field("Frequency Hz", settings.frequency.toString())
         autoGain = content.switch("Tuner AGC", settings.automaticGain)
         gain = content.field("Manual gain (tenths of dB)", settings.gainTenthsDb.toString())
-        beastPort = content.field("Beast port", settings.beastPort.toString())
         startBoot = content.switch("Start at boot", settings.startAtBoot)
+
+        content.addMatchWidth(section("Data export"))
+        beastExport = content.switch("Beast TCP export", settings.beastTcpExportEnabled)
+        beastPort = content.field("Beast TCP port (127.0.0.1 only)", settings.beastPort.toString())
+        fun updateBeastPortEnabled() { beastPort.isEnabled = beastExport.isChecked; beastPort.alpha = if (beastExport.isChecked) 1f else 0.55f }
+        updateBeastPortEnabled()
+        beastExport.setOnCheckedChangeListener { _, _ -> updateBeastPortEnabled() }
+        content.addMatchWidth(MaterialButton(this).apply {
+            text = "Apply data export"
+            setOnClickListener { applyBeastExport() }
+        })
 
         content.addMatchWidth(section("Map and boundary data"))
         styleUrl = content.field("OpenFreeMap style URL", settings.mapStyleUrl, numeric = false)
@@ -106,6 +117,7 @@ class SettingsActivity : AppCompatActivity() {
             settings.automaticGain = autoGain.isChecked
             settings.gainTenthsDb = gain.text.toString().toInt()
             settings.beastPort = beastPort.text.toString().toInt()
+            settings.beastTcpExportEnabled = beastExport.isChecked
             settings.startAtBoot = startBoot.isChecked
             settings.mapStyleUrl = styleUrl.text.toString()
             settings.firEnabled = fir.isChecked
@@ -117,6 +129,19 @@ class SettingsActivity : AppCompatActivity() {
             finish()
         } catch (error: NumberFormatException) {
             Toast.makeText(this, "Check the numeric settings", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun applyBeastExport() {
+        try {
+            val port = beastPort.text.toString().toInt()
+            if (port !in 1024..65535) throw NumberFormatException()
+            settings.beastPort = port
+            settings.beastTcpExportEnabled = beastExport.isChecked
+            AdsbForegroundService.start(this, AdsbForegroundService.ACTION_APPLY_BEAST_EXPORT)
+            Toast.makeText(this, "Data export updated", Toast.LENGTH_SHORT).show()
+        } catch (error: NumberFormatException) {
+            Toast.makeText(this, "Beast TCP port must be 1024–65535", Toast.LENGTH_LONG).show()
         }
     }
 }

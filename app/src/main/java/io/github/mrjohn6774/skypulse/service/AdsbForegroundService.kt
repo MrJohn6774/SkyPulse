@@ -72,6 +72,7 @@ class AdsbForegroundService : Service() {
                 return START_NOT_STICKY
             }
             ACTION_RESTART -> restartCore()
+            ACTION_APPLY_BEAST_EXPORT -> beastServer?.setTcpExportEnabled(settings.beastTcpExportEnabled)
             ACTION_USB_CHANGED -> rtlController?.onUsbChanged(
                 intent.getStringExtra(EXTRA_USB_EVENT).orEmpty(),
             )
@@ -90,7 +91,10 @@ class AdsbForegroundService : Service() {
 
     private fun startCore() {
         HealthState.markStarted()
-        beastServer = BeastTcpServer(settings.beastPort).also { it.start() }
+        beastServer = BeastTcpServer(settings.beastPort).also {
+            it.start()
+            it.setTcpExportEnabled(settings.beastTcpExportEnabled)
+        }
         healthServer = HealthHttpServer().also { it.start() }
         val bridge = DecoderBridge(settings, requireNotNull(beastServer))
         AnalyzerBridge.registerAll(bridge)
@@ -117,6 +121,7 @@ class AdsbForegroundService : Service() {
         HealthState.driverState.set("stopped")
         HealthState.rtlTcpConnected.set(false)
         HealthState.beastClients.set(0)
+        HealthState.beastTcpExportEnabled.set(false)
         DiagnosticLog.info(TAG_SERVICE, "Receiver core stopped")
     }
 
@@ -195,6 +200,7 @@ class AdsbForegroundService : Service() {
         const val ACTION_STOP = "io.github.mrjohn6774.skypulse.action.STOP"
         const val ACTION_RESTART = "io.github.mrjohn6774.skypulse.action.RESTART"
         const val ACTION_USB_CHANGED = "io.github.mrjohn6774.skypulse.action.USB_CHANGED"
+        const val ACTION_APPLY_BEAST_EXPORT = "io.github.mrjohn6774.skypulse.action.APPLY_BEAST_EXPORT"
         const val EXTRA_USB_EVENT = "usb_event"
         private const val TAG_SERVICE = "ADSB.Service"
         private const val CHANNEL_ID = "adsb_receiver"

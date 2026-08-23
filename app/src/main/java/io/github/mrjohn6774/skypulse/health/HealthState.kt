@@ -14,6 +14,8 @@ data class HealthSnapshot(
     val messagesPerSec: Double,
     val aircraftActive: Int,
     val beastClients: Int,
+    val beastPipeline: String,
+    val beastTcpExportEnabled: Boolean,
     val lastIqMsAgo: Long?,
     val lastMessageMsAgo: Long?,
     val uptimeSeconds: Long,
@@ -26,6 +28,8 @@ object HealthState {
     val rtlTcpConnected = AtomicBoolean(false)
     val aircraftActive = AtomicInteger(0)
     val beastClients = AtomicInteger(0)
+    val beastPipelineRunning = AtomicBoolean(false)
+    val beastTcpExportEnabled = AtomicBoolean(false)
     val recoveries = AtomicLong(0)
     val totalIqBytes = AtomicLong(0)
     val totalMessages = AtomicLong(0)
@@ -80,6 +84,8 @@ object HealthState {
             messagesPerSec = cachedMessageRate,
             aircraftActive = aircraftActive.get(),
             beastClients = beastClients.get(),
+            beastPipeline = if (beastPipelineRunning.get()) "running" else "stopped",
+            beastTcpExportEnabled = beastTcpExportEnabled.get(),
             lastIqMsAgo = age(now, lastIqElapsedMs.get()),
             lastMessageMsAgo = age(now, lastMessageElapsedMs.get()),
             uptimeSeconds = if (serviceRunning.get()) (now - startedElapsedMs).coerceAtLeast(0) / 1_000 else 0,

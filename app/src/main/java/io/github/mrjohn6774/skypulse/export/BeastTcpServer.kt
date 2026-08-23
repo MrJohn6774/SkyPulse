@@ -14,19 +14,36 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 class BeastTcpServer(private val port: Int) {
-    private val running = AtomicBoolean(false)
+    private val pipelineRunning = AtomicBoolean(false)
+    private val listenerRunning = AtomicBoolean(false)
     private val activeClient = AtomicReference<ClientSession?>()
     @Volatile private var serverSocket: ServerSocket? = null
     @Volatile private var acceptThread: Thread? = null
 
     fun start() {
-        if (!running.compareAndSet(false, true)) return
+        pipelineRunning.set(true)
+        HealthState.beastPipelineRunning.set(true)
+    }
+
+    fun setTcpExportEnabled(enabled: Boolean) {
+        if (enabled) {
+            if (!listenerRunning.compareAndSet(false, true)) return
+            HealthState.beastTcpExportEnabled.set(true)
+        } else {
+            if (!listenerRunning.compareAndSet(true, false)) return
+            runCatching { serverSocket?.close() }
+            activeClient.getAndSet(null)?.close()
+            HealthState.beastClients.set(0)
+            HealthState.beastTcpExportEnabled.set(false)
+            return
+        }
         acceptThread = Thread(::acceptLoop, "BeastAccept").also { it.start() }
     }
 
     fun publish(message: ModeSMessage) {
-        val session = activeClient.get() ?: return
         val bytes = BeastEncoder.encode(message) ?: return
+        if (!pipelineRunning.get()) return
+        val session = activeClient.get() ?: return
         if (!session.offer(bytes)) {
             DiagnosticLog.warn(TAG, "Slow Beast client exceeded bounded queue; disconnecting")
             session.close()
@@ -34,12 +51,9 @@ class BeastTcpServer(private val port: Int) {
     }
 
     fun stop() {
-        if (!running.compareAndSet(true, false)) return
-        runCatching { serverSocket?.close() }
-        activeClient.getAndSet(null)?.close()
-        acceptThread?.interrupt()
-        acceptThread = null
-        HealthState.beastClients.set(0)
+        pipelineRunning.set(false)
+        HealthState.beastPipelineRunning.set(false)
+        setTcpExportEnabled(false)
     }
 
     private fun acceptLoop() {
@@ -49,7 +63,7 @@ class BeastTcpServer(private val port: Int) {
                 listener.bind(InetSocketAddress(LOOPBACK_ADDRESS, port), 2)
                 serverSocket = listener
                 DiagnosticLog.info(TAG, "Listening on 127.0.0.1:$port")
-                while (running.get()) {
+                while (listenerRunning.get()) {
                     val socket = listener.accept()
                     socket.tcpNoDelay = true
                     socket.keepAlive = true
@@ -63,7 +77,7 @@ class BeastTcpServer(private val port: Int) {
                 }
             }
         } catch (error: Exception) {
-            if (running.get()) DiagnosticLog.error(TAG, "Beast listener failed", error)
+            if (listenerRunning.get()) DiagnosticLog.error(TAG, "Beast listener failed", error)
         } finally {
             serverSocket = null
         }

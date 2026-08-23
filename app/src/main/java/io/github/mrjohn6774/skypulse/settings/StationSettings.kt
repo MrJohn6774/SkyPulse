@@ -50,6 +50,10 @@ class StationSettings(context: Context) {
         get() = prefs.getInt(KEY_BEAST_PORT, DEFAULT_BEAST_PORT)
         set(value) = prefs.edit().putInt(KEY_BEAST_PORT, value.coerceIn(1024, 65535)).apply()
 
+    var beastTcpExportEnabled: Boolean
+        get() = prefs.getBoolean(KEY_BEAST_TCP_EXPORT, false)
+        set(value) = prefs.edit().putBoolean(KEY_BEAST_TCP_EXPORT, value).apply()
+
     var startAtBoot: Boolean
         get() = prefs.getBoolean(KEY_START_BOOT, true)
         set(value) = prefs.edit().putBoolean(KEY_START_BOOT, value).apply()
@@ -112,6 +116,7 @@ class StationSettings(context: Context) {
         private const val KEY_AUTO_GAIN = "auto_gain"
         private const val KEY_GAIN = "gain_tenths_db"
         private const val KEY_BEAST_PORT = "beast_port"
+        private const val KEY_BEAST_TCP_EXPORT = "beast_tcp_export_enabled"
         private const val KEY_START_BOOT = "start_at_boot"
         private const val KEY_RECEIVER_ENABLED = "receiver_enabled"
         private const val KEY_FIR = "fir_enabled"
