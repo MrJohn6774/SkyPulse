@@ -21,10 +21,11 @@ CRC/parity and ICAO semantics.
 
 ## 2. GPL implications
 
-The reused FlightAware/ebcTech decoder is GPLv2. SkyPulse is therefore distributed as a
-GPLv2 application, preserves upstream file headers, includes the GPLv2 text in `LICENSE`,
-and documents modifications in `NOTICE.md`. Source distributions of the APK must provide
-the complete corresponding source.
+The reused FlightAware/ebcTech decoder retains its GPLv2 provenance and upstream file
+headers. SkyPulse as a whole is distributed under GPL-3.0-or-later; the root `LICENSE`
+contains the complete GPLv3 text, while the historical GPLv2 upstream text is retained at
+`third_party/licenses/GPL-2.0-only.txt`. `NOTICE.md` documents the provenance and
+modifications. Source distributions of the APK must provide the complete corresponding source.
 
 The normalized VATSpy and SimAware data remain CC BY-SA 4.0 derived datasets; their
 license and attribution are separate from the application code license.

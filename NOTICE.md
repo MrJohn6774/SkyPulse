@@ -1,5 +1,13 @@
 # Notices and attribution
 
+## SkyPulse licensing
+
+SPDX-License-Identifier: GPL-3.0-or-later
+
+SkyPulse as a whole is distributed under the GNU General Public License, version 3 or later.
+The complete GPLv3 text is in the root `LICENSE` file. The project copyright holder has
+authorized this distribution; no public permission record is cited here.
+
 ## FlightAware / ebcTech decoder
 
 The Mode S/ADS-B analyzer code under
@@ -11,7 +19,9 @@ ADS-B Flight Scanner and the published ebcTech GPL refactoring.
 - SkyPulse modifications, 2026: removed Google `LatLng`; connected application-owned
   `GeoPoint`; added deterministic shutdown/queue clearing and worker health; moved raw
   export to the post-validation decoder stage.
-- License: GNU General Public License version 2 (`LICENSE`)
+- Original license/provenance: GNU General Public License version 2. The original upstream
+  notices remain in the derived source files, and
+  `third_party/licenses/GPL-2.0-only.txt` is retained as the historical upstream license text.
 
 ## MapLibre Native
 

@@ -1,6 +1,6 @@
 # SkyPulse
 
-SkyPulse is a GPLv2 Android ADS-B station MVP for a dedicated, unattended 1090 MHz receiver.
+SkyPulse is a GPL-3.0-or-later Android ADS-B station MVP for a dedicated, unattended 1090 MHz receiver.
 It consumes unsigned 8-bit I/Q from an external `rtl_tcp_andro` driver, decodes Mode S/ADS-B
 on-device, and publishes standard Beast binary data on `127.0.0.1:30005` for Termux/readsb.
 
