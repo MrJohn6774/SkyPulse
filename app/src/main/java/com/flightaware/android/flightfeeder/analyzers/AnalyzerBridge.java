@@ -13,7 +13,7 @@ package com.flightaware.android.flightfeeder.analyzers;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import org.skypulse.app.model.GeoPoint;
+import io.github.mrjohn6774.skypulse.model.GeoPoint;
 
 /**
  * Central dependency-injection registry for the FlightAware analyzer library.

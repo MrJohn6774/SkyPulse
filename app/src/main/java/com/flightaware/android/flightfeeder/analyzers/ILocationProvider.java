@@ -12,7 +12,7 @@
 package com.flightaware.android.flightfeeder.analyzers;
 
 import androidx.annotation.Nullable;
-import org.skypulse.app.model.GeoPoint;
+import io.github.mrjohn6774.skypulse.model.GeoPoint;
 
 /**
  * Provides the current receiver location to FlightAware decoder logic.

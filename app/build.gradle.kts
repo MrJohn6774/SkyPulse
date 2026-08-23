@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace = "org.skypulse.app"
+    namespace = "io.github.mrjohn6774.skypulse"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "org.skypulse.app"
+        applicationId = "io.github.mrjohn6774.skypulse"
         minSdk = 23
         targetSdk = 36
         versionCode = 1

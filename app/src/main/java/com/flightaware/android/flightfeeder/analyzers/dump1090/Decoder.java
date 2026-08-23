@@ -27,7 +27,7 @@ import com.flightaware.android.flightfeeder.analyzers.Aircraft;
 import com.flightaware.android.flightfeeder.analyzers.AnalyzerBridge;
 import com.flightaware.android.flightfeeder.analyzers.RawPosition;
 import com.flightaware.android.flightfeeder.analyzers.RecentAircraftCache;
-import org.skypulse.app.model.GeoPoint;
+import io.github.mrjohn6774.skypulse.model.GeoPoint;
 
 
 public class Decoder {

@@ -1,0 +1,13 @@
+package io.github.mrjohn6774.skypulse.sdr
+
+enum class RtlTcpState {
+    STOPPED,
+    WAITING_FOR_DEVICE,
+    WAITING_FOR_USB_STABILITY,
+    STARTING_DRIVER,
+    WAITING_FOR_LISTENER,
+    CONNECTING_TCP,
+    STREAMING,
+    STOPPING_OLD_SESSION,
+    RECOVERING,
+}
