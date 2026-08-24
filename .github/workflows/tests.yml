@@ -25,4 +25,6 @@ jobs:
           cache: gradle
 
       - name: Run unit tests
-        run: ./gradlew --no-daemon testDebugUnitTest
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon testDebugUnitTest
