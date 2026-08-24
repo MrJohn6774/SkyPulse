@@ -10,7 +10,6 @@ import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.net.HttpURLConnection
-import java.net.URI
 import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.zip.ZipInputStream
@@ -20,15 +19,19 @@ class BoundaryRepository(
     private val settings: StationSettings,
 ) {
     private val storageContext = if (Build.VERSION.SDK_INT >= 24) context.createDeviceProtectedStorageContext() else context
+    private val assets = context.assets
     private val directory = File(storageContext.filesDir, "boundaries").apply { mkdirs() }
 
-    fun sourceUri(name: String): URI {
+    /** Returns the active, validated GeoJSON collection for a boundary overlay. */
+    fun collection(name: String): JSONObject {
         val cached = File(directory, name)
-        return if (cached.isFile && runCatching { validateCollection(cached.readText()) }.isSuccess) {
-            localFileUri(cached.absolutePath)
+        val text = if (cached.isFile && runCatching { validateCollection(cached.readText()) }.isSuccess) {
+            cached.readText()
         } else {
-            URI("asset://$name")
+            assets.open(name).bufferedReader().use { it.readText() }
         }
+        validateCollection(text)
+        return JSONObject(text)
     }
 
     fun maybeUpdate() {
@@ -188,9 +191,5 @@ class BoundaryRepository(
         private val ALLOWED_GEOMETRIES = setOf("Polygon", "MultiPolygon", "LineString", "MultiLineString")
         private val updating = AtomicBoolean(false)
 
-        internal fun localFileUri(absolutePath: String): URI {
-            require(absolutePath.startsWith('/')) { "Boundary path must be absolute" }
-            return URI("file", "", absolutePath, null)
-        }
     }
 }

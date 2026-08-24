@@ -1,1 +1,1 @@
-# Decoder and MapLibre keep their public API names. Minification is disabled for the MVP.
+# Decoder and osmdroid use their public APIs. Minification is disabled for the MVP.

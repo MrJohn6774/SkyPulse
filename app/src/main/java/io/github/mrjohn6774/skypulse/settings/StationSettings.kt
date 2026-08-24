@@ -74,10 +74,6 @@ class StationSettings(context: Context) {
         get() = prefs.getBoolean(KEY_LABELS, true)
         set(value) = prefs.edit().putBoolean(KEY_LABELS, value).apply()
 
-    var mapStyleUrl: String
-        get() = prefs.getString(KEY_STYLE, DEFAULT_STYLE_URL) ?: DEFAULT_STYLE_URL
-        set(value) = prefs.edit().putString(KEY_STYLE, value.trim()).apply()
-
     var boundaryAutoUpdate: Boolean
         get() = prefs.getBoolean(KEY_BOUNDARY_UPDATE, false)
         set(value) = prefs.edit().putBoolean(KEY_BOUNDARY_UPDATE, value).apply()
@@ -104,8 +100,6 @@ class StationSettings(context: Context) {
         const val DEFAULT_BEAST_PORT = 30005
         const val DEFAULT_SAMPLE_RATE = 2_400_000L
         const val DEFAULT_FREQUENCY = 1_090_000_000L
-        const val DEFAULT_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
-
         private const val FILE_NAME = "station_settings"
         private const val KEY_LATITUDE = "receiver_latitude"
         private const val KEY_LONGITUDE = "receiver_longitude"
@@ -122,7 +116,6 @@ class StationSettings(context: Context) {
         private const val KEY_FIR = "fir_enabled"
         private const val KEY_TRACON = "tracon_enabled"
         private const val KEY_LABELS = "labels_enabled"
-        private const val KEY_STYLE = "map_style"
         private const val KEY_BOUNDARY_UPDATE = "boundary_auto_update"
         private const val KEY_LAST_BOUNDARY_CHECK = "last_boundary_check"
     }

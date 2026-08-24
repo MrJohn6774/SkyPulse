@@ -1,11 +1,10 @@
 package io.github.mrjohn6774.skypulse.map
 
 import android.content.Context
-import android.graphics.Color
-import android.graphics.Bitmap
+import android.content.res.Configuration
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.Typeface
 import android.os.Bundle
 import android.os.Handler
@@ -27,26 +26,22 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.NestedScrollView
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.button.MaterialButton
-import org.json.JSONArray
-import org.json.JSONObject
-import org.maplibre.android.MapLibre
-import org.maplibre.android.camera.CameraUpdateFactory
-import org.maplibre.android.geometry.LatLng
-import org.maplibre.android.geometry.LatLngBounds
-import org.maplibre.android.maps.MapView
-import org.maplibre.android.maps.MapLibreMap
-import org.maplibre.android.maps.Style
-import org.maplibre.android.style.expressions.Expression
-import org.maplibre.android.style.layers.LineLayer
-import org.maplibre.android.style.layers.Property
-import org.maplibre.android.style.layers.PropertyFactory
-import org.maplibre.android.style.layers.SymbolLayer
-import org.maplibre.android.style.sources.GeoJsonSource
 import io.github.mrjohn6774.skypulse.aircraft.AircraftRepository
 import io.github.mrjohn6774.skypulse.aircraft.AircraftSnapshot
 import io.github.mrjohn6774.skypulse.settings.StationSettings
 import io.github.mrjohn6774.skypulse.ui.dp
-import java.net.URI
+import org.osmdroid.config.Configuration as OsmdroidConfiguration
+import org.osmdroid.events.MapEventsReceiver
+import org.osmdroid.events.MapListener
+import org.osmdroid.events.ScrollEvent
+import org.osmdroid.events.ZoomEvent
+import org.osmdroid.tileprovider.tilesource.XYTileSource
+import org.osmdroid.util.BoundingBox
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.CopyrightOverlay
+import org.osmdroid.views.overlay.MapEventsOverlay
+import java.io.File
 import java.util.Locale
 
 class MapActivity : AppCompatActivity() {
@@ -54,7 +49,7 @@ class MapActivity : AppCompatActivity() {
     private lateinit var settings: StationSettings
     private lateinit var boundaries: BoundaryRepository
     private lateinit var mapView: MapView
-    private var map: MapLibreMap? = null
+    private lateinit var airspaceOverlay: AirspaceOverlayView
     private var selectedIcao: String? = null
     private var initialViewportSet = false
     private lateinit var aircraftTable: AircraftTableView
@@ -74,17 +69,38 @@ class MapActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         settings = StationSettings(this)
         boundaries = BoundaryRepository(this, settings)
-        MapLibre.getInstance(this)
-        mapView = MapView(this)
+        configureOsmdroid()
+        mapView = MapView(this).apply {
+            setTileSource(cartoTileSource(isDarkTheme()))
+            setMultiTouchControls(true)
+            // CARTO supplies 256px raster tiles; keeping native tile pixels avoids extra bitmap
+            // scaling and keeps the on-screen cache footprint small.
+            setTilesScaledToDpi(false)
+            overlays.add(CopyrightOverlay(this@MapActivity))
+            overlays.add(MapEventsOverlay(object : MapEventsReceiver {
+                override fun singleTapConfirmedHelper(point: GeoPoint): Boolean {
+                    onMapClick(point)
+                    return false
+                }
+
+                override fun longPressHelper(point: GeoPoint): Boolean = false
+            }))
+            addMapListener(object : MapListener {
+                override fun onScroll(event: ScrollEvent?): Boolean {
+                    airspaceOverlay.invalidate()
+                    return false
+                }
+
+                override fun onZoom(event: ZoomEvent?): Boolean {
+                    airspaceOverlay.invalidate()
+                    return false
+                }
+            })
+        }
         setContentView(buildContent())
-        mapView.onCreate(savedInstanceState)
-        mapView.getMapAsync { value ->
-            map = value
-            value.setStyle(Style.Builder().fromUri(settings.mapStyleUrl)) { style ->
-                configureSourcesAndLayers(style)
-                recenter()
-            }
-            value.addOnMapClickListener { point -> onMapClick(value, point) }
+        loadBoundaries()
+        mapView.post {
+            recenter()
         }
     }
 
@@ -92,6 +108,21 @@ class MapActivity : AppCompatActivity() {
         val root = CoordinatorLayout(this)
         root.addView(
             mapView,
+            CoordinatorLayout.LayoutParams(
+                CoordinatorLayout.LayoutParams.MATCH_PARENT,
+                CoordinatorLayout.LayoutParams.MATCH_PARENT,
+            ),
+        )
+        airspaceOverlay = AirspaceOverlayView(this, mapView).apply {
+            setVisibility(
+                fir = settings.firEnabled,
+                tracon = settings.traconEnabled,
+                labels = settings.labelsEnabled,
+            )
+            setTheme(isDarkTheme())
+        }
+        root.addView(
+            airspaceOverlay,
             CoordinatorLayout.LayoutParams(
                 CoordinatorLayout.LayoutParams.MATCH_PARENT,
                 CoordinatorLayout.LayoutParams.MATCH_PARENT,
@@ -187,7 +218,7 @@ class MapActivity : AppCompatActivity() {
             isChecked = settings.firEnabled
             setOnCheckedChangeListener { _, checked ->
                 settings.firEnabled = checked
-                setLayerVisible(FIR_LAYER, checked)
+                airspaceOverlay.setVisibility(fir = checked)
             }
         })
         body.addView(CheckBox(this).apply {
@@ -196,7 +227,7 @@ class MapActivity : AppCompatActivity() {
             isChecked = settings.traconEnabled
             setOnCheckedChangeListener { _, checked ->
                 settings.traconEnabled = checked
-                setLayerVisible(TRACON_LAYER, checked)
+                airspaceOverlay.setVisibility(tracon = checked)
             }
         })
         body.addView(CheckBox(this).apply {
@@ -205,7 +236,7 @@ class MapActivity : AppCompatActivity() {
             isChecked = settings.labelsEnabled
             setOnCheckedChangeListener { _, checked ->
                 settings.labelsEnabled = checked
-                setLayerVisible(AIRCRAFT_LABEL_LAYER, checked)
+                airspaceOverlay.setVisibility(labels = checked)
             }
         })
         controls.addView(body)
@@ -272,49 +303,12 @@ class MapActivity : AppCompatActivity() {
         return sheet
     }
 
-    private fun configureSourcesAndLayers(style: Style) {
-        style.addSource(GeoJsonSource(FIR_SOURCE, boundaries.sourceUri(BoundaryRepository.FIR_FILE)))
-        style.addLayer(LineLayer(FIR_LAYER, FIR_SOURCE).withProperties(
-            PropertyFactory.lineColor("#4FA3FF"),
-            PropertyFactory.lineWidth(1.5f),
-            PropertyFactory.lineOpacity(0.7f),
-            PropertyFactory.visibility(if (settings.firEnabled) Property.VISIBLE else Property.NONE),
-        ))
-        style.addSource(GeoJsonSource(TRACON_SOURCE, boundaries.sourceUri(BoundaryRepository.TRACON_FILE)))
-        style.addLayer(LineLayer(TRACON_LAYER, TRACON_SOURCE).withProperties(
-            PropertyFactory.lineColor("#F8C24E"),
-            PropertyFactory.lineWidth(1.2f),
-            PropertyFactory.lineOpacity(0.75f),
-            PropertyFactory.visibility(if (settings.traconEnabled) Property.VISIBLE else Property.NONE),
-        ))
-
-        style.addImage(RECEIVER_ICON, receiverIconBitmap())
-        style.addImage(AIRCRAFT_ICON, aircraftIconBitmap())
-
-        style.addSource(GeoJsonSource(RECEIVER_SOURCE, receiverGeoJson()))
-        style.addLayer(SymbolLayer(RECEIVER_LAYER, RECEIVER_SOURCE).withProperties(
-            PropertyFactory.iconImage(RECEIVER_ICON),
-            PropertyFactory.iconAllowOverlap(true),
-        ))
-
-        style.addSource(GeoJsonSource(AIRCRAFT_SOURCE, emptyFeatureCollection()))
-        style.addLayer(SymbolLayer(AIRCRAFT_LAYER, AIRCRAFT_SOURCE).withProperties(
-            PropertyFactory.iconImage(AIRCRAFT_ICON),
-            PropertyFactory.iconRotate(Expression.get("track")),
-            PropertyFactory.iconAllowOverlap(true),
-            PropertyFactory.iconIgnorePlacement(true),
-        ))
-        style.addLayer(SymbolLayer(AIRCRAFT_LABEL_LAYER, AIRCRAFT_SOURCE).withProperties(
-            PropertyFactory.textField(Expression.get("label")),
-            PropertyFactory.textFont(arrayOf(DEFAULT_MAP_FONT)),
-            PropertyFactory.textSize(11f),
-            PropertyFactory.textColor("#FFFFFF"),
-            PropertyFactory.textHaloColor("#172033"),
-            PropertyFactory.textHaloWidth(1.5f),
-            PropertyFactory.textOffset(arrayOf(0f, 1.8f)),
-            PropertyFactory.textAllowOverlap(false),
-            PropertyFactory.visibility(if (settings.labelsEnabled) Property.VISIBLE else Property.NONE),
-        ))
+    private fun loadBoundaries() {
+        Thread({
+            val fir = runCatching { BoundaryGeometry.rings(boundaries.collection(BoundaryRepository.FIR_FILE)) }.getOrDefault(emptyList())
+            val tracon = runCatching { BoundaryGeometry.rings(boundaries.collection(BoundaryRepository.TRACON_FILE)) }.getOrDefault(emptyList())
+            airspaceOverlay.setBoundaryRings(fir, tracon)
+        }, "BoundaryMapLoad").start()
     }
 
     private fun refreshAircraft() {
@@ -323,12 +317,11 @@ class MapActivity : AppCompatActivity() {
         aircraftSheetTitle.text = "Aircraft: ${allAircraft.size} · On map: ${mappableAircraft.size}"
         refreshAircraftTable(allAircraft)
 
-        val style = map?.style ?: return
-        style.getSourceAs<GeoJsonSource>(AIRCRAFT_SOURCE)?.setGeoJson(aircraftGeoJson(mappableAircraft))
+        airspaceOverlay.updateTraffic(mappableAircraft, settings.receiverPoint())
         if (!initialViewportSet) frameAircraft(mappableAircraft)
         selectedIcao?.let { icao ->
             mappableAircraft.firstOrNull { it.icao == icao }?.let {
-                map?.animateCamera(CameraUpdateFactory.newLatLng(LatLng(it.latitude!!, it.longitude!!)))
+                mapView.controller.setCenter(GeoPoint(it.latitude!!, it.longitude!!))
             }
         }
     }
@@ -609,13 +602,10 @@ class MapActivity : AppCompatActivity() {
     private fun ageSeconds(timestamp: Long, now: Long): String =
         if (timestamp <= 0) "—" else ((now - timestamp).coerceAtLeast(0L) / 1_000L).toString()
 
-    private fun onMapClick(map: MapLibreMap, point: LatLng): Boolean {
-        val screen = map.projection.toScreenLocation(point)
-        val feature = map.queryRenderedFeatures(screen, AIRCRAFT_LAYER).firstOrNull() ?: return false
-        val icao = feature.getStringProperty("icao") ?: return false
-        selectedIcao = icao
-        AircraftRepository.active().firstOrNull { it.icao == icao }?.let(::showAircraft)
-        return true
+    private fun onMapClick(point: GeoPoint) {
+        val aircraft = airspaceOverlay.findAircraftAt(point) ?: return
+        selectedIcao = aircraft.icao
+        showAircraft(aircraft)
     }
 
     private fun showAircraft(value: AircraftSnapshot) {
@@ -641,7 +631,8 @@ class MapActivity : AppCompatActivity() {
         val receiver = settings.receiverPoint()
         if (receiver != null) {
             initialViewportSet = true
-            map?.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(receiver.latitude, receiver.longitude), 8.0))
+            mapView.controller.setZoom(8.0)
+            mapView.controller.setCenter(GeoPoint(receiver.latitude, receiver.longitude))
         } else {
             frameAircraft(AircraftRepository.mappable())
         }
@@ -651,134 +642,66 @@ class MapActivity : AppCompatActivity() {
         val points = values.mapNotNull { value ->
             val latitude = value.latitude ?: return@mapNotNull null
             val longitude = value.longitude ?: return@mapNotNull null
-            LatLng(latitude, longitude)
+            GeoPoint(latitude, longitude)
         }
         if (points.isEmpty()) return false
 
-        val cameraUpdate = if (points.size == 1) {
-            CameraUpdateFactory.newLatLngZoom(points.first(), 8.0)
+        if (points.size == 1) {
+            mapView.controller.setZoom(8.0)
+            mapView.controller.setCenter(points.first())
         } else {
-            val bounds = LatLngBounds.Builder().includes(points).build()
-            CameraUpdateFactory.newLatLngBounds(bounds, dp(64))
+            mapView.zoomToBoundingBox(BoundingBox.fromGeoPoints(points), true, dp(64))
         }
         initialViewportSet = true
-        map?.animateCamera(cameraUpdate)
         return true
     }
 
-    private fun setLayerVisible(id: String, visible: Boolean) {
-        map?.style?.getLayer(id)?.setProperties(PropertyFactory.visibility(if (visible) Property.VISIBLE else Property.NONE))
-    }
+    private fun isDarkTheme(): Boolean =
+        resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
 
-    private fun receiverGeoJson(): String {
-        val point = settings.receiverPoint() ?: return emptyFeatureCollection()
-        return JSONObject().apply {
-            put("type", "FeatureCollection")
-            put("features", JSONArray().put(JSONObject().apply {
-                put("type", "Feature")
-                put("properties", JSONObject().put("name", "Receiver"))
-                put("geometry", JSONObject().put("type", "Point").put("coordinates", JSONArray().put(point.longitude).put(point.latitude)))
-            }))
-        }.toString()
-    }
-
-    private fun aircraftGeoJson(values: List<AircraftSnapshot>): String {
-        val features = JSONArray()
-        values.filter { it.hasValidPosition }.forEach { value ->
-            features.put(JSONObject().apply {
-                put("type", "Feature")
-                put("properties", JSONObject().apply {
-                    put("icao", value.icao)
-                    put("track", value.trackDegrees ?: 0)
-                    put("label", "${value.callsign ?: value.icao} ${value.altitudeFeet ?: ""}")
-                })
-                put("geometry", JSONObject().put("type", "Point").put("coordinates", JSONArray().put(value.longitude).put(value.latitude)))
-            })
+    private fun configureOsmdroid() {
+        OsmdroidConfiguration.getInstance().load(this, getSharedPreferences(OSMDROID_PREFERENCES, MODE_PRIVATE))
+        OsmdroidConfiguration.getInstance().apply {
+            setOsmdroidBasePath(File(cacheDir, "osmdroid"))
+            setOsmdroidTileCache(File(cacheDir, "osmdroid/tiles"))
+            userAgentValue = packageName
+            setTileDownloadThreads(TILE_DOWNLOAD_THREADS.toShort())
+            setTileFileSystemThreads(TILE_FILE_SYSTEM_THREADS.toShort())
+            setTileDownloadMaxQueueSize(TILE_DOWNLOAD_QUEUE_SIZE.toShort())
         }
-        return JSONObject().put("type", "FeatureCollection").put("features", features).toString()
     }
 
-    private fun emptyFeatureCollection() = "{\"type\":\"FeatureCollection\",\"features\":[]}"
-
-    private fun aircraftIconBitmap(): Bitmap {
-        val size = dp(30)
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        val path = Path().apply {
-            moveTo(size * 0.50f, size * 0.04f)
-            lineTo(size * 0.63f, size * 0.42f)
-            lineTo(size * 0.92f, size * 0.68f)
-            lineTo(size * 0.60f, size * 0.61f)
-            lineTo(size * 0.55f, size * 0.87f)
-            lineTo(size * 0.70f, size * 0.96f)
-            lineTo(size * 0.50f, size * 0.91f)
-            lineTo(size * 0.30f, size * 0.96f)
-            lineTo(size * 0.45f, size * 0.87f)
-            lineTo(size * 0.40f, size * 0.61f)
-            lineTo(size * 0.08f, size * 0.68f)
-            lineTo(size * 0.37f, size * 0.42f)
-            close()
-        }
-        canvas.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(23, 32, 51)
-            style = Paint.Style.STROKE
-            strokeWidth = dp(4).toFloat()
-            strokeJoin = Paint.Join.ROUND
-        })
-        canvas.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            style = Paint.Style.FILL
-        })
-        return bitmap
+    private fun cartoTileSource(dark: Boolean): XYTileSource {
+        val style = if (dark) "dark_all" else "light_all"
+        return XYTileSource(
+            if (dark) "CartoDark" else "CartoLight",
+            0,
+            20,
+            256,
+            ".png",
+            arrayOf(
+                "https://a.basemaps.cartocdn.com/$style/",
+                "https://b.basemaps.cartocdn.com/$style/",
+                "https://c.basemaps.cartocdn.com/$style/",
+                "https://d.basemaps.cartocdn.com/$style/",
+            ),
+            "© OpenStreetMap contributors © CARTO",
+        )
     }
 
-    private fun receiverIconBitmap(): Bitmap {
-        val size = dp(24)
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        val path = Path().apply {
-            moveTo(size * 0.50f, size * 0.08f)
-            lineTo(size * 0.92f, size * 0.50f)
-            lineTo(size * 0.50f, size * 0.92f)
-            lineTo(size * 0.08f, size * 0.50f)
-            close()
-        }
-        canvas.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(23, 32, 51)
-            style = Paint.Style.STROKE
-            strokeWidth = dp(4).toFloat()
-            strokeJoin = Paint.Join.ROUND
-        })
-        canvas.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(101, 214, 173)
-            style = Paint.Style.FILL
-        })
-        return bitmap
-    }
-
-    override fun onStart() { super.onStart(); mapView.onStart(); handler.post(refresh) }
+    override fun onStart() { super.onStart(); handler.post(refresh) }
+    override fun onStop() { handler.removeCallbacks(refresh); super.onStop() }
     override fun onResume() { super.onResume(); mapView.onResume() }
     override fun onPause() { mapView.onPause(); super.onPause() }
-    override fun onStop() { handler.removeCallbacks(refresh); mapView.onStop(); super.onStop() }
-    override fun onLowMemory() { super.onLowMemory(); mapView.onLowMemory() }
-    override fun onDestroy() { mapView.onDestroy(); super.onDestroy() }
-    override fun onSaveInstanceState(outState: Bundle) { super.onSaveInstanceState(outState); mapView.onSaveInstanceState(outState) }
+    override fun onDestroy() { mapView.onDetach(); super.onDestroy() }
 
     companion object {
-        private const val FIR_SOURCE = "fir-source"
-        private const val FIR_LAYER = "fir-layer"
-        private const val TRACON_SOURCE = "tracon-source"
-        private const val TRACON_LAYER = "tracon-layer"
-        private const val RECEIVER_SOURCE = "receiver-source"
-        private const val RECEIVER_LAYER = "receiver-layer"
-        private const val RECEIVER_ICON = "receiver-icon"
-        private const val AIRCRAFT_SOURCE = "aircraft-source"
-        private const val AIRCRAFT_LAYER = "aircraft-layer"
-        private const val AIRCRAFT_ICON = "aircraft-icon"
-        private const val AIRCRAFT_LABEL_LAYER = "aircraft-label-layer"
-        private const val DEFAULT_MAP_FONT = "Noto Sans Regular"
         private const val TABLE_PEEK_HEIGHT_DP = 42
         private const val TABLE_REFRESH_MS = 1_000L
+        private const val OSMDROID_PREFERENCES = "osmdroid"
+        private const val TILE_DOWNLOAD_THREADS = 8
+        private const val TILE_FILE_SYSTEM_THREADS = 4
+        private const val TILE_DOWNLOAD_QUEUE_SIZE = 96
         private val TABLE_HEADERS = arrayOf(
             "ICAO", "Flight", "Latitude", "Longitude", "Alt ft", "Alt src", "Avg signal dB",
             "Baro", "Category", "GS kt", "Heading", "Heading Δ", "Track", "VRate", "Squawk",

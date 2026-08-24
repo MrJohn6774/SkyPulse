@@ -24,7 +24,6 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var gain: EditText
     private lateinit var beastPort: EditText
     private lateinit var beastExport: MaterialSwitch
-    private lateinit var styleUrl: EditText
     private lateinit var autoGain: MaterialSwitch
     private lateinit var startBoot: MaterialSwitch
     private lateinit var fir: MaterialSwitch
@@ -66,7 +65,10 @@ class SettingsActivity : AppCompatActivity() {
         })
 
         content.addMatchWidth(section("Map and boundary data"))
-        styleUrl = content.field("OpenFreeMap style URL", settings.mapStyleUrl, numeric = false)
+        content.addMatchWidth(android.widget.TextView(this).apply {
+            text = "Base map follows the device theme: CARTO Light in light mode and CARTO Dark in dark mode."
+            setPadding(0, dp(4), 0, dp(8))
+        })
         fir = content.switch("FIR overlay", settings.firEnabled)
         tracon = content.switch("TRACON overlay", settings.traconEnabled)
         labels = content.switch("Aircraft labels", settings.labelsEnabled)
@@ -127,7 +129,6 @@ class SettingsActivity : AppCompatActivity() {
             settings.beastPort = beastPort.text.toString().toInt()
             settings.beastTcpExportEnabled = beastExport.isChecked
             settings.startAtBoot = startBoot.isChecked
-            settings.mapStyleUrl = styleUrl.text.toString()
             settings.firEnabled = fir.isChecked
             settings.traconEnabled = tracon.isChecked
             settings.labelsEnabled = labels.isChecked
