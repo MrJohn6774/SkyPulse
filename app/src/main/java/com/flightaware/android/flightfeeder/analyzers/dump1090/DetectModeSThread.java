@@ -1,16 +1,19 @@
 /*
  * Originally from FlightAware ADSB Flight Scanner for Android
  * Copyright (C) FlightAware, LLC
- * Licensed under the GNU General Public License, version 2 (GPLv2).
+ * Licensed under the GNU General Public License, version 2
+ * or (at your option) any later version.
  *
  * This file has been modified by ebctech (https://github.com/ebc81), 2024-2025.
  * Modifications:
- *   - Replaced eu.ebctech export dispatch with AnalyzerBridge.getExportDispatcher() (GPLv2 boundary refactoring, 2025)
+ *   - Replaced eu.ebctech export dispatch with AnalyzerBridge.getExportDispatcher() (GPL-2.0-or-later boundary refactoring, 2025)
  *   - Replaced eu.ebctech.dump1090.BuildConfig.DEBUG with AnalyzerBridge.isDebug()
  *   - Replaced LoggerEbc with AnalyzerBridge.getLogger()
  *
- * Source of modified GPLv2 components:
- * https://github.com/ebc81/dump1090andro-gpl-sources
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ *
+ * Upstream licensing:
+ * https://github.com/ebc81/dump1090andro-gpl-sources/blob/main/LICENSE.md
  */
 package com.flightaware.android.flightfeeder.analyzers.dump1090;
 

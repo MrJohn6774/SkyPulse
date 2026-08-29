@@ -5,23 +5,34 @@
 SPDX-License-Identifier: GPL-3.0-or-later
 
 SkyPulse as a whole is distributed under the GNU General Public License, version 3 or later.
-The complete GPLv3 text is in the root `LICENSE` file. The project copyright holder has
-authorized this distribution; no public permission record is cited here.
+The complete GPLv3 text is in the root `LICENSE` file.
 
 ## FlightAware / ebcTech decoder
 
 The Mode S/ADS-B analyzer code under
 `app/src/main/java/com/flightaware/android/flightfeeder/analyzers` derives from FlightAware
-ADS-B Flight Scanner and the published ebcTech GPL refactoring.
+ADS-B Flight Scanner and the published ebcTech dump1090 Android GPL sources.
 
-- Copyright © FlightAware, LLC
-- ebcTech modifications © ebcTech / ebc81, 2024–2025
+Both upstream projects license this code under the GNU General Public License, either
+version 2 or, at the recipient's option, any later version (`GPL-2.0-or-later`).
+
+Authoritative upstream licence declarations:
+
+- https://github.com/ebc81/dump1090andro-gpl-sources/blob/main/LICENSE.md
+- https://github.com/flightaware/adsb-flight-scanner-android/blob/master/LICENSE.md
+
+SkyPulse exercises the permitted later-version option and distributes the combined
+SkyPulse application under `GPL-3.0-or-later`.
+
+The retained provenance includes:
+
+- Copyright (C) FlightAware, LLC.
+- ebcTech modifications (C) ebcTech / ebc81, 2024-2025.
 - SkyPulse modifications, 2026: removed Google `LatLng`; connected application-owned
   `GeoPoint`; added deterministic shutdown/queue clearing and worker health; moved raw
   export to the post-validation decoder stage.
-- Original license/provenance: GNU General Public License version 2. The original upstream
-  notices remain in the derived source files, and
-  `third_party/licenses/GPL-2.0-only.txt` is retained as the historical upstream license text.
+
+Copyright and modification notices in the derived source files are preserved.
 
 ## MapLibre Native
 

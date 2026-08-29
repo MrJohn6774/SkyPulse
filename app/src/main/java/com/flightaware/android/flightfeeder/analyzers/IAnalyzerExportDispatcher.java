@@ -1,13 +1,16 @@
 /*
  * Added by ebctech (https://github.com/ebc81), 2025.
- * Part of the GPLv2 boundary refactoring — isolates FlightAware (GPLv2) code
+ * Part of the GPL-2.0-or-later boundary refactoring; isolates FlightAware code
  * from eu.ebctech.* proprietary code.
  *
- * Licensed under the GNU General Public License, version 2 (GPLv2),
+ * Licensed under the GNU General Public License, version 2
+ * or (at your option) any later version,
  * as this file is part of the modified FlightAware ADS-B component.
  *
- * Source of modified GPLv2 components:
- * https://github.com/ebc81/dump1090andro-gpl-sources
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ *
+ * Upstream licensing:
+ * https://github.com/ebc81/dump1090andro-gpl-sources/blob/main/LICENSE.md
  */
 package com.flightaware.android.flightfeeder.analyzers;
 

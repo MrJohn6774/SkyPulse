@@ -1,7 +1,8 @@
 /*
  * Originally from FlightAware ADSB Flight Scanner for Android
  * Copyright (C) FlightAware, LLC
- * Licensed under the GNU General Public License, version 2 (GPLv2).
+ * Licensed under the GNU General Public License, version 2
+ * or (at your option) any later version.
  *
  * This file has been modified by ebctech (https://github.com/ebc81), 2024-2025.
  * Modifications:
@@ -9,10 +10,12 @@
  *   - Replaced start(UsbManager, UsbDevice) with startEbc()
  *   - Replaced stop() with stopEbc()
  *   - Removed sListener callback system
- *   - Removed unused MySettings import (GPLv2 boundary refactoring, 2025)
+ *   - Removed unused MySettings import (GPL-2.0-or-later boundary refactoring, 2025)
  *
- * Source of modified GPLv2 components:
- * https://github.com/ebc81/dump1090andro-gpl-sources
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ *
+ * Upstream licensing:
+ * https://github.com/ebc81/dump1090andro-gpl-sources/blob/main/LICENSE.md
  */
 package com.flightaware.android.flightfeeder.analyzers.dump1090;
 

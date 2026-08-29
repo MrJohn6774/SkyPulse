@@ -6,7 +6,7 @@ by the project.
 
 | Component | Use | License |
 |---|---|---|
-| FlightAware ADS-B Flight Scanner / ebcTech decoder | Mode S detector/decoder | GPLv2 provenance; see `licenses/GPL-2.0-only.txt` |
+| FlightAware ADS-B Flight Scanner / ebcTech decoder | Mode S detector/decoder | GPL-2.0-or-later |
 | MapLibre Native Android | Native map renderer | BSD 2-Clause |
 | AndroidX Core/AppCompat, Material Components | Android application UI/support | Apache 2.0 |
 | OpenFreeMap / OpenMapTiles / OpenStreetMap | Map style and data | Provider/ODbL attribution |
@@ -15,3 +15,12 @@ by the project.
 
 The Signalware RTL-TCP driver is a separately installed application and is not bundled or
 linked into the SkyPulse APK.
+
+The FlightAware/ebcTech decoder is licensed under GNU GPL version 2 or, at the
+recipient's option, any later version. SkyPulse exercises the later-version option
+and distributes the combined application under GPL-3.0-or-later.
+
+Authoritative upstream licence declarations:
+
+- https://github.com/ebc81/dump1090andro-gpl-sources/blob/main/LICENSE.md
+- https://github.com/flightaware/adsb-flight-scanner-android/blob/master/LICENSE.md
