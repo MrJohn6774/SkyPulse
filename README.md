@@ -2,22 +2,37 @@
 
 SkyPulse decodes 1090 MHz Mode S/ADS-B aircraft traffic on Android using an RTL-SDR.
 
-## Features
+[<img src="https://f-droid.org/badge/get-it-on.png"
+    alt="Get it on F-Droid"
+    height="80">](https://f-droid.org/packages/io.github.mrjohn6774.skypulse/)
 
-- On-device ADS-B decoding and live aircraft map
-- Offline FIR and TRACON boundary snapshots
-- Optional loopback-only Beast TCP output
-- Configurable unattended startup after boot
+## See SkyPulse in action
 
-## Requirements
+<p align="center">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" alt="SkyPulse live map with aircraft" width="30%">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" alt="SkyPulse receiver settings" width="30%">
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" alt="SkyPulse aircraft details" width="30%">
+</p>
 
-SkyPulse needs an RTL-SDR through USB OTG and the separate `marto.rtl_tcp_andro` driver, available from F-Droid.
+## What it does
 
-## Quick start
+- Shows decoded aircraft on a live map, including callsign, altitude, speed, heading, and squawk when transmitted.
+- Keeps FIR and TRACON boundary snapshots available even when the receiver has no network connection.
+- Can share raw aircraft frames with compatible local apps through optional Beast TCP output.
+- Supports a configurable start-at-boot mode for unattended receiving.
 
-1. Enter the receiver latitude and longitude in Settings.
-2. Connect the RTL-SDR and tap **Start**.
-3. Check receiver status and the aircraft map.
+## What you need
+
+- An Android phone or tablet with USB OTG support.
+- A compatible RTL-SDR dongle and antenna.
+- The separate `marto.rtl_tcp_andro` driver app, available from F-Droid.
+
+## Get started
+
+1. Install SkyPulse and the RTL-TCP driver.
+2. Connect the RTL-SDR through USB OTG, then open SkyPulse.
+3. In **Settings**, enter your receiver latitude and longitude. (Optional)
+4. Tap **Start**, then open the map to see received aircraft.
 
 ## Map and boundary data
 
