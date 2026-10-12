@@ -46,6 +46,8 @@ The Beast frame pipeline is part of normal decoding. Beast TCP export is disable
 
 Use **Settings → Start at boot** to allow boot startup. It is user-configurable; Android and ROM background restrictions can affect automatic startup.
 
+Android 10 and later block apps in the background from opening other apps, so SkyPulse cannot restart the RTL-TCP driver on its own after a USB re-enumeration or driver exit. Tap **Allow unattended driver restart** on the main screen and enable **Display over other apps** for SkyPulse to let it restart the driver unattended, including while the phone is locked. Without that permission, SkyPulse posts a notification instead; tap it to start the driver.
+
 ## Privacy and network access
 
 See [PRIVACY.md](PRIVACY.md). SkyPulse has no analytics, ads, accounts, or Google Play Services.

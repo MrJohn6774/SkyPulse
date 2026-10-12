@@ -21,6 +21,7 @@ class RtlTcpController(
     @Volatile private var worker: Thread? = null
     @Volatile private var client: RtlTcpClient? = null
     @Volatile private var usbStableAfterMs = 0L
+    private val driverLaunchedByUser = AtomicBoolean(false)
     @Volatile var state: RtlTcpState = RtlTcpState.STOPPED
         private set
 
@@ -47,6 +48,7 @@ class RtlTcpController(
         activeWorker?.interrupt()
         if (activeWorker !== Thread.currentThread()) runCatching { activeWorker?.join(STOP_JOIN_MS) }
         activeClient?.stop()
+        DriverStartNotification.cancel(context)
         transition(RtlTcpState.STOPPED)
         HealthState.rtlTcpConnected.set(false)
     }
@@ -68,6 +70,12 @@ class RtlTcpController(
         signalWorker()
     }
 
+    /** The user started the driver from the foreground; probe its listener promptly. */
+    fun onDriverLaunchRequested() {
+        driverLaunchedByUser.set(true)
+        signalWorker()
+    }
+
     private fun recoveryLoop() {
         var delayIndex = 0
         var observedUsb: String? = null
@@ -80,6 +88,7 @@ class RtlTcpController(
                 if (usb == null) {
                     if (observedUsb != null) {
                         observedUsb = null
+                        DriverStartNotification.cancel(context)
                         advanceGeneration("RTL-SDR disappeared")
                     }
                     transition(RtlTcpState.WAITING_FOR_DEVICE)
@@ -107,6 +116,7 @@ class RtlTcpController(
                     if (generation != sessionGeneration.get() || !running.get()) {
                         sessionClient?.stop()
                     } else {
+                        DriverStartNotification.cancel(context)
                         transition(RtlTcpState.STREAMING)
                         DiagnosticLog.info(
                             TAG,
@@ -147,12 +157,19 @@ class RtlTcpController(
                         DiagnosticLog.info(TAG, "Old RTL-TCP listener teardown confirmed")
                     }
 
-                    val launched = synchronized(lifecycleLock) {
-                        if (!running.get()) false
+                    val launch = synchronized(lifecycleLock) {
+                        if (!running.get()) DriverLaunchResult.SUPPRESSED
                         else RtlTcpDriver.requestStartFromBackground(context, settings)
                     }
-                    transition(if (launched) RtlTcpState.STARTING_DRIVER else RtlTcpState.WAITING_FOR_LISTENER)
-                    val retryMs = if (launched) {
+                    val launched = launch == DriverLaunchResult.LAUNCHED
+                    transition(
+                        when (launch) {
+                            DriverLaunchResult.LAUNCHED -> RtlTcpState.STARTING_DRIVER
+                            DriverLaunchResult.NEEDS_USER -> RtlTcpState.WAITING_FOR_USER
+                            else -> RtlTcpState.WAITING_FOR_LISTENER
+                        },
+                    )
+                    val retryMs = if (launched || driverLaunchedByUser.getAndSet(false)) {
                         // A newly requested activity normally opens its listener quickly. Reset
                         // accumulated outage backoff so we probe it promptly without relaunching.
                         delayIndex = 1

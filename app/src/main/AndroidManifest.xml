@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <!-- Lets the receiver restart the SDR driver activity unattended (background activity start). -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <queries>
         <package android:name="marto.rtl_tcp_andro" />
@@ -32,6 +34,12 @@
         android:usesCleartextTraffic="false">
 
         <activity android:name=".ui.DiagnosticsActivity" android:exported="false" />
+        <activity
+            android:name=".ui.DriverStartActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
         <activity android:name=".ui.SettingsActivity" android:exported="false" />
         <activity android:name=".map.MapActivity" android:exported="false" />
         <activity

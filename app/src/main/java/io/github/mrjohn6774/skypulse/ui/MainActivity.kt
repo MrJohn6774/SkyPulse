@@ -1,13 +1,15 @@
 package io.github.mrjohn6774.skypulse.ui
 
 import android.Manifest
-import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
+import android.view.View
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -27,14 +29,14 @@ class MainActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var settings: StationSettings
     private lateinit var status: TextView
+    private lateinit var unattendedButton: MaterialButton
 
     private val driverLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
+        val reason = RtlTcpDriver.describeFailure(result.resultCode, result.data)
+        if (reason == null) {
             DiagnosticLog.info("ADSB.Driver", "SDR driver reported successful startup")
             Toast.makeText(this, "SDR driver started", Toast.LENGTH_SHORT).show()
         } else {
-            val reason = result.data?.getStringExtra("detailed_exception_message")
-                ?: "Driver did not open the SDR"
             DiagnosticLog.warn("ADSB.Driver", reason)
             Toast.makeText(this, reason, Toast.LENGTH_LONG).show()
         }
@@ -90,6 +92,17 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener { AdsbForegroundService.stop(this@MainActivity) }
         })
 
+        unattendedButton = MaterialButton(this).apply {
+            text = "Allow unattended driver restart"
+            setOnClickListener {
+                // Android only lets a background app start the SDR driver while it may draw overlays.
+                startActivity(
+                    Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")),
+                )
+            }
+        }
+        content.addMatchWidth(unattendedButton)
+
         content.addMatchWidth(section("Station"))
         content.addMatchWidth(MaterialButton(this).apply {
             text = "Aircraft map"
@@ -125,6 +138,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderStatus() {
         val value = HealthState.snapshot()
+        val unattended = RtlTcpDriver.canStartUnattended(this)
         val overall = when {
             !value.service.equals("running", true) -> "STOPPED"
             value.rtlTcpConnected && value.iqBytesPerSec > 0 -> "RUNNING"
@@ -143,8 +157,10 @@ class MainActivity : AppCompatActivity() {
             append("Beast 127.0.0.1:").append(settings.beastPort).append(": ")
                 .append(if (value.beastClients > 0) "client connected" else "waiting").append('\n')
             append("Uptime: ").append(value.uptimeSeconds).append(" s\n")
-            append("Recoveries: ").append(value.recoveries)
+            append("Recoveries: ").append(value.recoveries).append('\n')
+            append("Unattended driver restart: ").append(if (unattended) "allowed" else "needs a tap on the notification")
         }
+        unattendedButton.visibility = if (unattended) View.GONE else View.VISIBLE
     }
 
     private fun requestNotificationPermission() {

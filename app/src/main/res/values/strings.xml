@@ -3,4 +3,8 @@
     <string name="notification_channel_name">ADS-B receiver</string>
     <string name="notification_channel_description">Continuous RTL-SDR reception and Beast export</string>
     <string name="notification_running">ADS-B receiver is running</string>
+    <string name="driver_start_channel_name">SDR driver start</string>
+    <string name="driver_start_channel_description">Asks you to start the SDR driver when Android blocks starting it automatically</string>
+    <string name="driver_start_title">Tap to start the SDR driver</string>
+    <string name="driver_start_text">Android blocked SkyPulse from restarting the RTL-SDR driver in the background. Tap to start it, or allow \"Display over other apps\" in SkyPulse to restart it unattended.</string>
 </resources>
